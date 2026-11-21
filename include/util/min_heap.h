@@ -37,13 +37,17 @@ public:
         // Clue: compare with less_(a, b), never a < b. Some element types
         // (e.g. the provided memory_store.cpp's Scored struct) have no
         // operator<, and a min-heap of std::greater must still work.
-        (void)value;
+        data_.push_back(std::move(value));
+        sift_up(data_.size() - 1);
     }
 
     // The smallest element. Throws std::out_of_range if empty. O(1).
     const T& top() const {
         // TODO
-        throw std::out_of_range("MinHeap::top not implemented");
+        if (!empty()){
+            return data_[0];
+        }
+        throw std::out_of_range("MinHeap::top: heap empty");
     }
 
     // Removes and returns the smallest element. Throws std::out_of_range if
@@ -55,7 +59,18 @@ public:
         // element" to move: just take it and pop_back().
         // Clue: T result = std::move(data_[0]); then move the last element
         // into slot 0 (moving avoids copying big strings).
-        throw std::out_of_range("MinHeap::pop not implemented");
+        if (empty()) {
+            throw std::out_of_range("MinHeap::pop: heap is empty");
+        }
+        T result = std::move(data_[0]);
+        if (data_.size() == 1) {
+            data_.pop_back();
+            return result;
+        }
+        data_[0] = std::move(data_.back());
+        data_.pop_back();
+        sift_down(0);
+        return result;
     }
 
     std::size_t size() const noexcept { return data_.size(); }
@@ -71,6 +86,38 @@ private:
     // underflows, so sift_up must stop at i == 0.
     // Clue: in sift_down, the right child may not exist: check
     // 2*i+2 < data_.size() before reading it. Swap with the SMALLER child.
+
+   void sift_up(std::size_t i) {
+        while (i > 0) {
+            std::size_t parent = (i - 1) / 2;
+            if (less_(data_[i], data_[parent])) {
+                std::swap(data_[i], data_[parent]);
+                i = parent;
+            } else {
+                return;
+            }
+        }
+    }
+
+    void sift_down(std::size_t i) {
+        const std::size_t n = data_.size();
+        while (true) {
+            std::size_t left  = 2 * i + 1;
+            std::size_t right = 2 * i + 2;
+            std::size_t smallest = i;
+
+            if (left < n && less_(data_[left], data_[smallest]))
+                smallest = left;
+            if (right < n && less_(data_[right], data_[smallest]))
+                smallest = right;
+
+            if (smallest == i)
+                return;
+
+            std::swap(data_[i], data_[smallest]);
+            i = smallest;
+        }
+    }
 
     std::vector<T> data_;
     Less           less_;
@@ -98,8 +145,26 @@ std::vector<T> top_k(const std::vector<T>& items, std::size_t k, Less less = Les
     //    heap.top() < item.  Read less(a, b) as "a is WORSE than b": the heap
     //    keeps the k best items with the worst of them on top.
     //  * std::reverse (from <algorithm>) flips a vector.
-    (void)items;
-    (void)k;
-    (void)less;
-    return {};
+
+    if (k == 0) {
+        return {};
+    }
+
+    MinHeap<T, Less> heap(less);
+    for (const T& item : items) {
+        if (heap.size() < k) {
+            heap.push(item);
+        } else if (less(heap.top(), item)) {
+            heap.pop();
+            heap.push(item);
+        }
+    }
+ 
+    std::vector<T> result;
+    result.reserve(heap.size());
+    while (!heap.empty()) {
+        result.push_back(heap.pop());
+    }
+    std::reverse(result.begin(), result.end());
+    return result;
 }
