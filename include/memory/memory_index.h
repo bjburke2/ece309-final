@@ -79,7 +79,21 @@ private:
         MemoryRecord rec;
         Node*        left = nullptr;
         Node*        right = nullptr;
+        std::size_t height =1;
     };
+
+      static void        destroy(Node* n);              // post-order delete
+      static std::size_t height_of(const Node* n);
+      static void        in_order(const Node* n,
+                                  const std::function<void(const MemoryRecord&)>& fn);
+      static Node*       remove_node(Node* n, std::uint64_t id, bool* removed);
+
+      static Node*       insert_node(Node* n, MemoryRecord&& rec, bool* inserted);
+      static Node*       rotate_left(Node* n);
+      static Node*       rotate_right(Node* n);
+      static Node*       rebalance(Node* n);
+      static void        update_height(Node* n);
+      static int         balance_factor(const Node* n);
 
     Node*       root_ = nullptr;
     std::size_t count_ = 0;
