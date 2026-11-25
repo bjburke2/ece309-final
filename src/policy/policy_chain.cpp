@@ -9,9 +9,15 @@ bool PolicyChain::add(std::unique_ptr<Policy> child) {
     // Clue: a unique_ptr cannot be copied. Check for nullptr first, then
     // children_.push_back(std::move(child)). Plain push_back(child) gives a
     // long error mentioning "use of deleted function unique_ptr(const unique_ptr&)".
-    (void)child;
-    return false;
+    if (child == nullptr) {
+        return false;
+    }
+    else{
+        children_.push_back(std::move(child));
+        return true;
+    }
 }
+    
 
 std::size_t PolicyChain::size() const noexcept { return children_.size(); }
 
@@ -26,6 +32,26 @@ Decision PolicyChain::evaluate(const CommandRequest& req) {
     //    only the FIRST Ask; after the loop return that Ask if there was one.
     //  * The enum is nested: write Decision::Kind::Deny, not Deny or
     //    Decision::Deny.
-    (void)req;
-    return Decision::deny("not implemented", name());
+    if (children_.empty()) {
+        return Decision::deny("the chain has no policies", "chain");
+    }
+    bool yn = false;
+    Decision first_ask = Decision::allow("no confirmation needed", "chain");
+    for (const auto& child : children_) {
+        Decision d = child->evaluate(req);
+        if (d.kind == Decision::Kind::Deny) {
+            return d;
+        }
+        if (d.kind == Decision::Kind::Ask && !yn) {
+            first_ask = d;
+            yn = true;
+        }
+    }
+    if (yn) {
+        return first_ask;
+    }
+    else {
+        return Decision::allow("all policies allowed command", "chain");
+    }
+    
 }
