@@ -78,4 +78,7 @@ private:
     //            std::vector<std::string>& path, std::vector<std::string>* out,
     //            std::string* error) const;
     // (or write it as a free function in an anonymous namespace in the .cpp).
+    bool dfs(const std::string& node, std::unordered_map<std::string, int>& color,
+               std::vector<std::string>& path, std::vector<std::string>* out,
+               std::string* error) const;
 };
