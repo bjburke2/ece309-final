@@ -20,8 +20,36 @@ ContextPlan select_context(const std::vector<ContextItem>& items,
     //    collect the indices still marked true, in ascending order.
     //  * total_tokens is the sum of the KEPT items; over_budget is
     //    total_tokens > budget.
-    (void)items;
-    (void)budget;
-    (void)keep_recent;
-    return {};
+    std::size_t total = 0;
+    for (const ContextItem& item : items) {
+        total += item.tokens;
+    }
+    std::vector<bool> keep(items.size(), true);
+    if (total > budget) {
+        std::size_t recent_start = 0;
+        if (keep_recent < items.size()) {
+            recent_start = items.size() - keep_recent;
+        }
+        MinHeap<std::pair<int, std::size_t>> heap;
+        for (std::size_t i = 0; i < items.size(); i++) {
+            if ((items[i].role == Role::System) || (items[i].pinned) || (i >= recent_start)) {
+                continue;
+            }
+            heap.push({drop_rank(items[i].role), i});
+        }
+        while ((total > budget) && !heap.empty()) {
+            std::size_t index = heap.pop().second;
+            keep[index] = false;
+            total -= items[index].tokens;
+        }
+    }
+    ContextPlan plan;
+    for (std::size_t i = 0; i < items.size(); i++) {
+        if (keep[i]) {
+            plan.keep.push_back(i);
+        }
+    }
+    plan.total_tokens = total;
+    plan.over_budget = total > budget;
+    return plan;
 }
